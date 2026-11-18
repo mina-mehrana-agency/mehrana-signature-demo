@@ -26,7 +26,7 @@ const finePointer = matchMedia('(hover: hover) and (pointer: fine)').matches;
 const CAMERA = { y: 4.5, z: -8, pitch: 0.1, fov: 50, center: 0.5 };
 const PARALLAX = { yaw: 0.022, pitch: 0.012, damping: 0.03 }; // Slow follow, like nk.studio.
 const DISC_FOLLOW = 0.2; // Share of the gap the disc closes per frame at 60 fps.
-const FLOOR = { centerZ: 20, radius: 14, gap: 0.5, bowl: 2, bowlWidth: 6, rim: 1.6 };
+const FLOOR = { centerZ: 15, radius: 19, gap: 0.6, bowl: 2, bowlWidth: 6.5, rim: 2.2 };
 const CAKE = { z: 8, size: 1.6, tilt: -0.1 };
 // Same values as the first local version: dip depth and width, how fast it follows and sinks,
 // ripple height, speed and life, and the height of the slow waves.
@@ -230,6 +230,18 @@ function drawFloor(alpha, rise, time) {
   };
   const lift = (1 - rise) * -3;
   const paths = Array.from({ length: SHADES }, () => new Path2D());
+  // The liquid draws itself a little darker: around the dip and along each ripple ring.
+  const pull = well.depth / LIQUID.depth;
+  const reach = 2 * (LIQUID.spread * 2.2) ** 2;
+  const liquidShade = (x, z) => {
+    let shade = pull > 0.01 ? pull * Math.exp(-((x - well.x) ** 2 + (z - well.z) ** 2) / reach) : 0;
+    for (const ripple of ripples) {
+      const age = time - ripple.born;
+      const ring = Math.hypot(x - ripple.x, z - ripple.z) - age * LIQUID.speed;
+      shade = Math.max(shade, 0.8 * Math.max(0, 1 - age / LIQUID.life) * Math.exp(-(ring * ring) / 1.5));
+    }
+    return shade;
+  };
   const lines = (horizontal) => {
     for (let a = -radius; a <= radius; a += gap) {
       // Short pieces, so each line can fade out toward the edge of the floor.
@@ -237,7 +249,8 @@ function drawFloor(alpha, rise, time) {
       for (let b = -radius; b <= radius; b += gap / 1.5) {
         const x = horizontal ? b : a;
         const z = centerZ + (horizontal ? a : b);
-        const strength = fade(x, z);
+        const edge = fade(x, z);
+        const strength = edge > 0 ? Math.max(edge, Math.min(1, liquidShade(x, z) * 1.1)) : 0;
         const point = strength > 0 ? project(x, floorHeight(x, z, time) + lift, z) : null;
         if (point && previous) {
           const path = paths[Math.min(SHADES - 1, Math.round(strength * (SHADES - 1)))];
