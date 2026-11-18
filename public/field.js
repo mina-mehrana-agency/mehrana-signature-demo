@@ -1,6 +1,7 @@
 // Signature 4: the mouse effect, matched to nk.studio's hero.
 // - A frosted grey disc (42px) trails the pointer; a small dot sits exactly on the tip.
-//   Both live only inside this section, and the normal arrow stays, as on nk.studio.
+//   nk.studio shows them only in its hero; here they run across the whole site (Mina's call).
+//   The normal arrow stays, as on nk.studio.
 // - Behind the words: a grey wireframe room with a fine floor mesh that dips into a bowl.
 // - In front of the words: the client's object as a neon wireframe (nk.studio uses its slash;
 //   here it is a cake), crossing the heading.
@@ -12,8 +13,8 @@ const section = document.getElementById('custom');
 const back = section.querySelector('.field__canvas--back');
 const front = section.querySelector('.field__canvas--front');
 const title = section.querySelector('.field__title');
-const disc = section.querySelector('.field__disc');
-const dot = section.querySelector('.field__dot');
+const disc = document.querySelector('.cursor-disc');
+const dot = document.querySelector('.cursor-dot');
 const backContext = back.getContext('2d');
 const frontContext = front.getContext('2d');
 
@@ -294,15 +295,7 @@ function loop(now) {
   const revealing = revealStart > 0 && now - revealStart < 1300;
   if (turning || revealing) draw(now);
 
-  // The disc trails the pointer; the dot sits on it.
-  const follow = reduceMotion ? 1 : 1 - (1 - DISC_FOLLOW) ** frames;
-  discAt.x += (pointer.x - discAt.x) * follow;
-  discAt.y += (pointer.y - discAt.y) * follow;
-  disc.style.transform = `translate3d(${discAt.x}px, ${discAt.y}px, 0)`;
-  dot.style.transform = `translate3d(${pointer.x}px, ${pointer.y}px, 0)`;
-  const chasing = Math.abs(pointer.x - discAt.x) + Math.abs(pointer.y - discAt.y) > 0.3;
-
-  frame = visible && (turning || revealing || chasing) ? requestAnimationFrame(loop) : 0;
+  frame = visible && (turning || revealing) ? requestAnimationFrame(loop) : 0;
 }
 
 function wake() {
@@ -312,41 +305,56 @@ function wake() {
   }
 }
 
-let clientPoint = null;
-function placePointer() {
-  if (!clientPoint) return;
-  const box = section.getBoundingClientRect();
-  pointer.x = clientPoint.x - box.left;
-  pointer.y = clientPoint.y - box.top;
-}
-
 if (finePointer) {
   section.addEventListener('pointermove', (event) => {
-    clientPoint = { x: event.clientX, y: event.clientY };
-    placePointer();
-    if (!pointer.inside) {
-      pointer.inside = true;
-      discAt.x = pointer.x;
-      discAt.y = pointer.y;
-      section.classList.add('is-pointing');
-    }
     camera.targetYaw = (event.clientX / innerWidth - 0.5) * PARALLAX.yaw * 2;
     camera.targetPitch = CAMERA.pitch + (event.clientY / innerHeight - 0.5) * PARALLAX.pitch * 2;
     wake();
   });
-  section.addEventListener('pointerleave', () => {
-    pointer.inside = false;
-    section.classList.remove('is-pointing');
-  });
+}
+
+/* ---------- The pointer, site-wide ----------
+   The disc trails the pointer by the same amount as on nk.studio; the dot sits on the tip. */
+if (finePointer) {
+  let discFrame = 0;
+  let discLast = 0;
+  const chase = (now) => {
+    const frames = Math.min(3, (now - discLast) / (1000 / 60));
+    discLast = now;
+    const follow = reduceMotion ? 1 : 1 - (1 - DISC_FOLLOW) ** frames;
+    discAt.x += (pointer.x - discAt.x) * follow;
+    discAt.y += (pointer.y - discAt.y) * follow;
+    disc.style.transform = `translate3d(${discAt.x}px, ${discAt.y}px, 0)`;
+    const chasing = Math.abs(pointer.x - discAt.x) + Math.abs(pointer.y - discAt.y) > 0.3;
+    discFrame = chasing ? requestAnimationFrame(chase) : 0;
+  };
   window.addEventListener(
-    'scroll',
-    () => {
-      if (!pointer.inside) return;
-      placePointer();
-      wake();
+    'pointermove',
+    (event) => {
+      if (event.pointerType !== 'mouse' && event.pointerType !== 'pen') return;
+      pointer.x = event.clientX;
+      pointer.y = event.clientY;
+      dot.style.transform = `translate3d(${pointer.x}px, ${pointer.y}px, 0)`;
+      if (!pointer.inside) {
+        pointer.inside = true;
+        discAt.x = pointer.x;
+        discAt.y = pointer.y;
+        disc.classList.add('is-on');
+        dot.classList.add('is-on');
+      }
+      disc.classList.toggle('is-over', Boolean(event.target.closest?.('a, button, input, [data-deck]')));
+      if (!discFrame) {
+        discLast = performance.now();
+        discFrame = requestAnimationFrame(chase);
+      }
     },
     { passive: true },
   );
+  document.documentElement.addEventListener('mouseleave', () => {
+    pointer.inside = false;
+    disc.classList.remove('is-on');
+    dot.classList.remove('is-on');
+  });
 }
 
 new IntersectionObserver(

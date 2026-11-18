@@ -839,12 +839,14 @@
         text-decoration: none;
       }
 
-      .field__disc,
-      .field__dot {
-        position: absolute;
+      /* The nk.studio pointer, across the whole site: a frosted disc that trails the pointer and a
+         dot on the tip. Over links and buttons the disc thins out so their words stay readable. */
+      .cursor-disc,
+      .cursor-dot {
+        position: fixed;
         top: 0;
         left: 0;
-        z-index: 3;
+        z-index: 70;
         border-radius: 50%;
         opacity: 0;
         pointer-events: none;
@@ -852,7 +854,7 @@
         will-change: transform;
       }
 
-      .field__disc {
+      .cursor-disc {
         width: 42px;
         height: 42px;
         margin: -21px 0 0 -21px;
@@ -861,16 +863,20 @@
         backdrop-filter: blur(3px);
       }
 
-      .field__dot {
+      .cursor-dot {
         width: 5px;
         height: 5px;
         margin: -2.5px 0 0 -2.5px;
         background: var(--rose);
       }
 
-      .field.is-pointing .field__disc,
-      .field.is-pointing .field__dot {
+      .cursor-disc.is-on,
+      .cursor-dot.is-on {
         opacity: 1;
+      }
+
+      .cursor-disc.is-on.is-over {
+        opacity: 0.4;
       }
 
       .actions {
@@ -1315,8 +1321,6 @@
           <a class="field__link" href="https://www.clover.com/online-ordering/unique-cake--cafe-oshawa" target="_blank" rel="noopener">Order Online on Clover <span aria-hidden="true">→</span></a>
         </div>
         <canvas class="field__canvas field__canvas--front" aria-hidden="true"></canvas>
-        <div class="field__disc" aria-hidden="true"></div>
-        <div class="field__dot" aria-hidden="true"></div>
       </section>
 
       <section class="section visit" id="visit" aria-labelledby="visit-title">
@@ -1361,5 +1365,7 @@
       <a href="#inside"><b>3</b><span>Slider</span></a>
       <a href="#custom"><b>4</b><span>Mouse effect</span></a>
     </nav>
+    <div class="cursor-disc" aria-hidden="true"></div>
+    <div class="cursor-dot" aria-hidden="true"></div>
   </body>
 </html>
